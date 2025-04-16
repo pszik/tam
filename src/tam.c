@@ -66,10 +66,37 @@ static int execLoad(TamEmulator *Emulator, Instruction Instr) {
     return 1;
 }
 
+static int execLoada(TamEmulator *Emulator, Instruction Instr) {
+    ADDRESS Addr = calcAddress(Emulator, Instr);
+    pushData(Emulator, (DATA_W)Addr);
+    return 0;
+}
+
+static int execLoadi(TamEmulator *Emulator, Instruction Instr) {
+    ADDRESS BaseAddr = (ADDRESS)popData(Emulator);
+    for (int i = 0; i < Instr.N; ++i) {
+        ADDRESS Addr = BaseAddr + i;
+        DATA_W Data = Emulator->DataStore[Addr];
+        pushData(Emulator, Data);
+    }
+    return 1;
+}
+
+static int execLoadl(TamEmulator *Emulator, Instruction Instr) {
+    pushData(Emulator, Instr.D);
+    return 1;
+}
+
 int execute(TamEmulator *Emulator, Instruction Instr) {
     switch (Instr.Op) {
     case LOAD:
         return execLoad(Emulator, Instr);
+    case LOADA:
+        return execLoada(Emulator, Instr);
+    case LOADI:
+        return execLoadi(Emulator, Instr);
+    case LOADL:
+        return execLoadl(Emulator, Instr);
     case HALT:
         break;
     default:
