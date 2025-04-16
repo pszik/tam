@@ -148,6 +148,49 @@ static int execStorei(TamEmulator *Emulator, Instruction Instr) {
     return 1;
 }
 
+static int execJump(TamEmulator *Emulator, Instruction Instr) {
+    ADDRESS Addr = calcAddress(Emulator, Instr);
+    if (Addr >= Emulator->Registers[CT]) {
+        return 0;
+    }
+
+    Emulator->Registers[CP] = Addr;
+    return 1;
+}
+
+static int execJumpi(TamEmulator *Emulator, Instruction Instr) {
+    ADDRESS Addr;
+    if (!popData(Emulator, (DATA_W *)&Addr)) {
+        return 0;
+    }
+
+    if (Addr >= Emulator->Registers[CT]) {
+        return 0;
+    }
+
+    Emulator->Registers[CP] = Addr;
+    return 0;
+}
+
+static int execJumpif(TamEmulator *Emulator, Instruction Instr) {
+    DATA_W Arg;
+    if (!popData(Emulator, &Arg)) {
+        return 0;
+    }
+
+    if (Arg != Instr.N) {
+        return 1;
+    }
+
+    ADDRESS Addr = calcAddress(Emulator, Instr);
+    if (Addr >= Emulator->Registers[CT]) {
+        return 0;
+    }
+
+    Emulator->Registers[CP] = Addr;
+    return 1;
+}
+
 int execute(TamEmulator *Emulator, Instruction Instr) {
     switch (Instr.Op) {
     case LOAD:
@@ -162,6 +205,12 @@ int execute(TamEmulator *Emulator, Instruction Instr) {
         return execStore(Emulator, Instr);
     case STOREI:
         return execStorei(Emulator, Instr);
+    case JUMP:
+        return execJump(Emulator, Instr);
+    case JUMPI:
+        return execJumpi(Emulator, Instr);
+    case JUMPIF:
+        return execJumpif(Emulator, Instr);
     case HALT:
         break;
     default:
