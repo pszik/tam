@@ -36,20 +36,34 @@ int loadProgram(TamEmulator *Emulator, const char *Filename) {
 
 int fetchDecode(TamEmulator *Emulator, Instruction *Instr) {
     uint16_t Idx = Emulator->Registers[CP]++;
+    if (Idx >= Emulator->Registers[CT]) {
+        return 0;
+    }
+
     uint32_t Code = Emulator->CodeStore[Idx];
     *Instr = (Instruction){(Code & 0xf0000000) >> 28, (Code & 0x0f000000) >> 24,
                            (Code & 0x00ff0000) >> 16, (Code & 0x0000ffff)};
     return 1;
 }
 
-static void pushData(TamEmulator *Emulator, DATA_W Datum) {
+static int pushData(TamEmulator *Emulator, DATA_W Datum) {
+    if (Emulator->Registers[ST] >= Emulator->Registers[HT]) {
+        return 0;
+    }
+
     ADDRESS Addr = Emulator->Registers[ST]++;
     Emulator->DataStore[Addr] = Datum;
+    return 1;
 }
 
-static DATA_W popData(TamEmulator *Emulator) {
+static int popData(TamEmulator *Emulator, DATA_W *Datum) {
+    if (!Emulator->Registers[ST]) {
+        return 0;
+    }
+
     ADDRESS Addr = --Emulator->Registers[ST];
-    return Emulator->DataStore[Addr];
+    *Datum = Emulator->DataStore[Addr];
+    return 1;
 }
 
 static ADDRESS calcAddress(TamEmulator *Emulator, Instruction Instr) {
@@ -61,7 +75,9 @@ static int execLoad(TamEmulator *Emulator, Instruction Instr) {
     for (int i = 0; i < Instr.N; ++i) {
         ADDRESS Addr = BaseAddr + i;
         DATA_W Data = Emulator->DataStore[Addr];
-        pushData(Emulator, Data);
+        if (!pushData(Emulator, Data)) {
+            return 0;
+        }
     }
     return 1;
 }
@@ -73,7 +89,11 @@ static int execLoada(TamEmulator *Emulator, Instruction Instr) {
 }
 
 static int execLoadi(TamEmulator *Emulator, Instruction Instr) {
-    ADDRESS BaseAddr = (ADDRESS)popData(Emulator);
+    ADDRESS BaseAddr;
+    if (!popData(Emulator, &BaseAddr)) {
+        return 0;
+    }
+
     for (int i = 0; i < Instr.N; ++i) {
         ADDRESS Addr = BaseAddr + i;
         DATA_W Data = Emulator->DataStore[Addr];
@@ -83,15 +103,16 @@ static int execLoadi(TamEmulator *Emulator, Instruction Instr) {
 }
 
 static int execLoadl(TamEmulator *Emulator, Instruction Instr) {
-    pushData(Emulator, Instr.D);
-    return 1;
+    return pushData(Emulator, Instr.D);
 }
 
 static int execStore(TamEmulator *Emulator, Instruction Instr) {
     // pop value
     DATA_W Value[Instr.N];
     for (int i = 0; i < Instr.N; ++i) {
-        Value[i] = popData(Emulator);
+        if (!popData(Emulator, Value + i)) {
+            return 0;
+        }
     }
 
     // store
@@ -108,11 +129,17 @@ static int execStorei(TamEmulator *Emulator, Instruction Instr) {
     // pop value
     DATA_W Value[Instr.N];
     for (int i = 0; i < Instr.N; ++i) {
-        Value[i] = popData(Emulator);
+        if (!popData(Emulator, Value + i)) {
+            return 0;
+        }
     }
 
     // store
-    ADDRESS BaseAddr = popData(Emulator);
+    ADDRESS BaseAddr;
+    if (!popData(Emulator, &BaseAddr)) {
+        return 0;
+    }
+
     for (int i = 0; i < Instr.N; ++i) {
         ADDRESS Addr = BaseAddr + i;
         Emulator->DataStore[Addr] = Value[Instr.N - i - 1];
