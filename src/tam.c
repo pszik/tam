@@ -90,7 +90,7 @@ static int execLoada(TamEmulator *Emulator, Instruction Instr) {
 
 static int execLoadi(TamEmulator *Emulator, Instruction Instr) {
     ADDRESS BaseAddr;
-    if (!popData(Emulator, &BaseAddr)) {
+    if (!popData(Emulator, (DATA_W *)&BaseAddr)) {
         return 0;
     }
 
@@ -136,7 +136,7 @@ static int execStorei(TamEmulator *Emulator, Instruction Instr) {
 
     // store
     ADDRESS BaseAddr;
-    if (!popData(Emulator, &BaseAddr)) {
+    if (!popData(Emulator, (DATA_W *)&BaseAddr)) {
         return 0;
     }
 
