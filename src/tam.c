@@ -42,4 +42,40 @@ int fetchDecode(TamEmulator *Emulator, Instruction *Instr) {
     return 1;
 }
 
-int execute(TamEmulator *Emulator, Instruction Instr) { return 0; }
+static void pushData(TamEmulator *Emulator, DATA_W Datum) {
+    ADDRESS Addr = Emulator->Registers[ST]++;
+    Emulator->DataStore[Addr] = Datum;
+}
+
+static DATA_W popData(TamEmulator *Emulator) {
+    ADDRESS Addr = --Emulator->Registers[ST];
+    return Emulator->DataStore[Addr];
+}
+
+static ADDRESS calcAddress(TamEmulator *Emulator, Instruction Instr) {
+    return Emulator->Registers[Instr.R] + Instr.D;
+}
+
+static int execLoad(TamEmulator *Emulator, Instruction Instr) {
+    ADDRESS BaseAddr = calcAddress(Emulator, Instr);
+    for (int i = 0; i < Instr.N; ++i) {
+        ADDRESS Addr = BaseAddr + i;
+        DATA_W Data = Emulator->DataStore[Addr];
+        pushData(Emulator, Data);
+    }
+    return 1;
+}
+
+int execute(TamEmulator *Emulator, Instruction Instr) {
+    switch (Instr.Op) {
+    case LOAD:
+        return execLoad(Emulator, Instr);
+    case HALT:
+        break;
+    default:
+        fprintf(stderr, "Unrecognised opcode: %d", Instr.Op);
+        return 0;
+    }
+
+    return 1;
+}

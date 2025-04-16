@@ -6,14 +6,21 @@
 /// Maximum number of addressable words.
 #define MEMORY_SIZE 65536
 
+/// Type of words in the code store.
+#define CODE_W uint32_t
+/// Type of words in the data store.
+#define DATA_W int16_t
+/// Type of addresses.
+#define ADDRESS uint16_t
+
 /// @brief A single TAM emulator.
-typedef struct {
-    uint32_t CodeStore[MEMORY_SIZE]; ///< Contains the program to execute
-    int16_t DataStore[MEMORY_SIZE]; ///< Contains the stack and global variables
-    uint16_t Registers[16];         ///< Contains register values
+typedef struct TamEmulator {
+    CODE_W CodeStore[MEMORY_SIZE]; ///< Contains the program to execute
+    DATA_W DataStore[MEMORY_SIZE]; ///< Contains the stack and global variables
+    ADDRESS Registers[16];         ///< Contains register values
 } TamEmulator;
 
-typedef enum {
+typedef enum Opcode {
     LOAD,
     LOADA,
     LOADI,
@@ -32,7 +39,7 @@ typedef enum {
     HALT
 } Opcode;
 
-typedef enum {
+typedef enum Register {
     CB, ///< Code base
     CT, ///< Code top
     PB, ///< Primitive base
@@ -52,7 +59,7 @@ typedef enum {
 } Register;
 
 /// @brief A single 32-bit instruction.
-typedef struct {
+typedef struct Instruction {
     Opcode Op;  ///< Opcode
     Register R; ///< Register
     uint8_t N;  ///< Unsigned operand
@@ -61,7 +68,7 @@ typedef struct {
 
 /// @brief Read a TAM binary into an emulator's code store.
 /// @param[in,out] Emulator emulator to load
-/// @param Filename name of file to read from
+/// @param[in] Filename name of file to read from
 /// @return 0 if loading failed, 1 otherwise
 int loadProgram(TamEmulator *Emulator, const char *Filename);
 
