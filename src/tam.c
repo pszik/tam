@@ -1,11 +1,12 @@
 #include <tam/tam.h>
 
 #include <stdio.h>
+#include <tam/error.h>
 
 int loadProgram(TamEmulator *Emulator, const char *Filename) {
     FILE *File = fopen(Filename, "rb");
     if (!File) {
-        return 0;
+        return ErrFileNotFound;
     }
 
     // get file length
@@ -15,11 +16,11 @@ int loadProgram(TamEmulator *Emulator, const char *Filename) {
     rewind(File);
 
     if (FileLength % 4 != 0) {
-        return 0;
+        return ErrFileLength;
     }
 
     if (FileLength > MEMORY_SIZE) {
-        return 0;
+        return ErrFileLength;
     }
 
     // read bytes
@@ -31,7 +32,7 @@ int loadProgram(TamEmulator *Emulator, const char *Filename) {
     }
     Emulator->Registers[CT] = FileLength;
 
-    return 1;
+    return OK;
 }
 
 int fetchDecode(TamEmulator *Emulator, Instruction *Instr) {

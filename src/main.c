@@ -2,10 +2,13 @@
 #include <tam/tam.h>
 
 int main(int argc, const char **argv) {
+    int ErrCode;
     TamEmulator Emulator;
-    if (!loadProgram(&Emulator, argv[1])) {
-        fprintf(stderr, "Failed to load program\n");
-        return 1;
+
+    ErrCode = loadProgram(&Emulator, argv[1]);
+    if (ErrCode) {
+        fprintf(stderr, "failed to load program (%d)\n", ErrCode);
+        return ErrCode;
     }
 
     Instruction Instr;
