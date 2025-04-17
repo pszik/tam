@@ -210,6 +210,7 @@ static int execCall(TamEmulator *Emulator, Instruction Instr) {
 static int execCallPrimitive(TamEmulator *Emulator, Instruction Instr) {
     TamError Err;
     DATA_W Arg1, Arg2;
+    DATA_W *WArg1, *WArg2;
 
     switch (Instr.D) {
     case 1: // id
@@ -217,6 +218,111 @@ static int execCallPrimitive(TamEmulator *Emulator, Instruction Instr) {
     case 2: // not
         POP(Emulator, &Arg1);
         PUSH(Emulator, Arg1 ? 0 : 1);
+        break;
+    case 3: // and
+        POP(Emulator, &Arg1);
+        POP(Emulator, &Arg2);
+        PUSH(Emulator, Arg1 * Arg2 ? 1 : 0);
+        break;
+    case 4: // or
+        POP(Emulator, &Arg1);
+        POP(Emulator, &Arg2);
+        PUSH(Emulator, Arg1 + Arg2 ? 1 : 0);
+        break;
+    case 5: // succ
+        POP(Emulator, &Arg1);
+        PUSH(Emulator, Arg1 + 1);
+        break;
+    case 6: // pred
+        POP(Emulator, &Arg1);
+        PUSH(Emulator, Arg1 - 1);
+        break;
+    case 7: // neg
+        POP(Emulator, &Arg1);
+        PUSH(Emulator, -Arg1);
+        break;
+    case 8: // add
+        POP(Emulator, &Arg1);
+        POP(Emulator, &Arg2);
+        PUSH(Emulator, Arg1 + Arg2);
+        break;
+    case 9: // sub
+        POP(Emulator, &Arg1);
+        POP(Emulator, &Arg2);
+        PUSH(Emulator, Arg1 - Arg2);
+        break;
+    case 10: // mult
+        POP(Emulator, &Arg1);
+        POP(Emulator, &Arg2);
+        PUSH(Emulator, Arg1 * Arg2);
+        break;
+    case 11: // div
+        POP(Emulator, &Arg1);
+        POP(Emulator, &Arg2);
+        PUSH(Emulator, Arg1 / Arg2);
+        break;
+    case 12: // mod
+        POP(Emulator, &Arg1);
+        POP(Emulator, &Arg2);
+        PUSH(Emulator, Arg1 % Arg2);
+        break;
+    case 13: // lt
+        POP(Emulator, &Arg1);
+        POP(Emulator, &Arg2);
+        PUSH(Emulator, Arg1 < Arg2 ? 1 : 0);
+        break;
+    case 14: // le
+        POP(Emulator, &Arg1);
+        POP(Emulator, &Arg2);
+        PUSH(Emulator, Arg1 <= Arg2 ? 1 : 0);
+        break;
+    case 15: // ge
+        POP(Emulator, &Arg1);
+        POP(Emulator, &Arg2);
+        PUSH(Emulator, Arg1 >= Arg2 ? 1 : 0);
+        break;
+    case 16: // gt
+        POP(Emulator, &Arg1);
+        POP(Emulator, &Arg2);
+        PUSH(Emulator, Arg1 >= Arg2 ? 1 : 0);
+        break;
+    case 17: // eq
+        POP(Emulator, &Arg1);
+
+        WArg1 = (DATA_W *)malloc(sizeof(DATA_W) * Arg1);
+        for (int I = 0; I < Arg1; ++I) {
+            POP(Emulator, WArg1 + I);
+        }
+
+        WArg2 = (DATA_W *)malloc(sizeof(DATA_W) * Arg1);
+        for (int I = 0; I < Arg1; ++I) {
+            POP(Emulator, WArg2 + I);
+        }
+
+        Arg2 = strncmp((char *)WArg1, (char *)WArg2, Arg1 * sizeof(DATA_W)) ? 0
+                                                                            : 1;
+        PUSH(Emulator, Arg2);
+        free(WArg1);
+        free(WArg2);
+        break;
+    case 18: // neq
+        POP(Emulator, &Arg1);
+
+        WArg1 = (DATA_W *)malloc(sizeof(DATA_W) * Arg1);
+        for (int I = 0; I < Arg1; ++I) {
+            POP(Emulator, WArg1 + I);
+        }
+
+        WArg2 = (DATA_W *)malloc(sizeof(DATA_W) * Arg1);
+        for (int I = 0; I < Arg1; ++I) {
+            POP(Emulator, WArg2 + I);
+        }
+
+        Arg2 = strncmp((char *)WArg1, (char *)WArg2, Arg1 * sizeof(DATA_W)) ? 1
+                                                                            : 0;
+        PUSH(Emulator, Arg2);
+        free(WArg1);
+        free(WArg2);
         break;
     }
     return OK;
