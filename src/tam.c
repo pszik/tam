@@ -185,6 +185,86 @@ static int execStorei(TamEmulator *Emulator, Instruction Instr) {
     return 1;
 }
 
+static int execCall(TamEmulator *Emulator, Instruction Instr) {
+    ADDRESS StaticLink = Emulator->Registers[Instr.N];
+    ADDRESS DynamicLink = Emulator->Registers[LB];
+    ADDRESS ReturnAddress = Emulator->Registers[CP];
+
+    ADDRESS CallAddr = calcAddress(Emulator, Instr);
+    if (CallAddr >= Emulator->Registers[CT]) {
+        return ErrCodeAccessViolation;
+    }
+
+    TamError Err;
+    if ((Err = pushData(Emulator, (DATA_W)StaticLink))) {
+        return Err;
+    }
+    if ((Err = pushData(Emulator, (DATA_W)DynamicLink))) {
+        return Err;
+    }
+    if ((Err = pushData(Emulator, (DATA_W)ReturnAddress))) {
+        return Err;
+    }
+
+    Emulator->Registers[LB] = Emulator->Registers[ST] - 3;
+    Emulator->Registers[CP] = CallAddr;
+    return OK;
+}
+
+static int execCallPrimitive(TamEmulator *Emulator, Instruction Instr) {
+    TamError Err;
+    DATA_W Arg1, Arg2;
+
+    switch (Instr.D) {
+    case 1: // id
+        break;
+    case 2: // not
+        if ((Err = popData(Emulator, &Arg1))) {
+            return Err;
+        }
+        if ((Err = pushData(Emulator, Arg1 ? 0 : 1))) {
+            return Err;
+        }
+        break;
+    }
+    return OK;
+}
+
+static int execReturn(TamEmulator *Emulator, Instruction Instr) {
+    TamError Err;
+
+    // pop result
+    DATA_W Result[Instr.N];
+    for (int i = 0; i < Instr.N; ++i) {
+        if ((Err = popData(Emulator, Result + i))) {
+            return Err;
+        }
+    }
+
+    // pop frame and arguments
+    ADDRESS ReturnAddrAddr = Emulator->Registers[LB] + 2;
+    ADDRESS ReturnAddr = Emulator->DataStore[ReturnAddrAddr];
+    ADDRESS DynamicLinkAddr = Emulator->Registers[LB] + 1;
+    ADDRESS DynamicLink = Emulator->DataStore[DynamicLinkAddr];
+
+    Emulator->Registers[ST] = Emulator->Registers[LB];
+    for (int i = 0; i < Instr.D; ++i) {
+        if ((Err = popData(Emulator, NULL))) {
+            return Err;
+        }
+    }
+
+    // push result and update registers
+    for (int i = Instr.N - 1; i >= 0; --i) {
+        if ((Err = pushData(Emulator, Result[i]))) {
+            return Err;
+        }
+    }
+    Emulator->Registers[LB] = DynamicLink;
+    Emulator->Registers[CP] = ReturnAddr;
+    return OK;
+}
+
 static int execPush(TamEmulator *Emulator, Instruction Instr) {
     if (Emulator->Registers[ST] + Instr.D >= Emulator->Registers[HT]) {
         return ErrStackOverflow;
@@ -281,6 +361,13 @@ int execute(TamEmulator *Emulator, Instruction Instr) {
         return execStore(Emulator, Instr);
     case STOREI:
         return execStorei(Emulator, Instr);
+    case CALL:
+        if (Instr.R == PB && Instr.D > 0 && Instr.D < 29) {
+            return execCallPrimitive(Emulator, Instr);
+        }
+        return execCall(Emulator, Instr);
+    case RETURN:
+        return execReturn(Emulator, Instr);
     case PUSH:
         return execPush(Emulator, Instr);
     case POP:

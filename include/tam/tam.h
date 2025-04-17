@@ -28,7 +28,7 @@ static TamEmulator *newEmulator() {
 }
 
 typedef enum Opcode {
-    LOAD,
+    LOAD = 0,
     LOADA,
     LOADI,
     LOADL,
@@ -37,8 +37,7 @@ typedef enum Opcode {
     CALL,
     CALLI,
     RETURN,
-    NOOP,
-    PUSH,
+    PUSH = 10,
     POP,
     JUMP,
     JUMPI,
