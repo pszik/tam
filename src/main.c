@@ -6,49 +6,49 @@
 void instructionString(Instruction Instr, char *Str) {
     switch (Instr.Op) {
     case LOAD:
-        sprintf(Str, "LOAD(%d) %d[%d]", Instr.N, Instr.D, Instr.R);
+        snprintf(Str, 32, "LOAD(%d) %d[%d]", Instr.N, Instr.D, Instr.R);
         break;
     case LOADA:
-        sprintf(Str, "LOADA %d[%d]", Instr.D, Instr.R);
+        snprintf(Str, 32, "LOADA %d[%d]", Instr.D, Instr.R);
         break;
     case LOADI:
-        sprintf(Str, "LOADI (%d)", Instr.N);
+        snprintf(Str, 32, "LOADI (%d)", Instr.N);
         break;
     case LOADL:
-        sprintf(Str, "LOADL %d", Instr.D);
+        snprintf(Str, 32, "LOADL %d", Instr.D);
         break;
     case STORE:
-        sprintf(Str, "STORE(%d) %d[%d]", Instr.N, Instr.D, Instr.R);
+        snprintf(Str, 32, "STORE(%d) %d[%d]", Instr.N, Instr.D, Instr.R);
         break;
     case STOREI:
-        sprintf(Str, "STOREI(%d)", Instr.N);
+        snprintf(Str, 32, "STOREI(%d)", Instr.N);
         break;
     case CALL:
-        sprintf(Str, "CALL(%d) %d[%d]", Instr.N, Instr.D, Instr.R);
+        snprintf(Str, 32, "CALL(%d) %d[%d]", Instr.N, Instr.D, Instr.R);
         break;
     case CALLI:
-        sprintf(Str, "CALLI");
+        snprintf(Str, 32, "CALLI");
         break;
     case RETURN:
-        sprintf(Str, "RETURN(%d) %d", Instr.N, Instr.D);
+        snprintf(Str, 32, "RETURN(%d) %d", Instr.N, Instr.D);
         break;
     case PUSH:
-        sprintf(Str, "PUSH %d", Instr.D);
+        snprintf(Str, 32, "PUSH %d", Instr.D);
         break;
     case POP:
-        sprintf(Str, "POP(%d) %d", Instr.N, Instr.D);
+        snprintf(Str, 32, "POP(%d) %d", Instr.N, Instr.D);
         break;
     case JUMP:
-        sprintf(Str, "JUMP %d[%d]", Instr.D, Instr.R);
+        snprintf(Str, 32, "JUMP %d[%d]", Instr.D, Instr.R);
         break;
     case JUMPI:
-        sprintf(Str, "JUMPI");
+        snprintf(Str, 32, "JUMPI");
         break;
     case JUMPIF:
-        sprintf(Str, "JUMPIF(%d) %d[%d]", Instr.N, Instr.D, Instr.R);
+        snprintf(Str, 32, "JUMPIF(%d) %d[%d]", Instr.N, Instr.D, Instr.R);
         break;
     case HALT:
-        sprintf(Str, "HALT");
+        snprintf(Str, 32, "HALT");
         break;
     }
 }
