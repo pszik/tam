@@ -38,33 +38,33 @@ int loadProgram(TamEmulator *Emulator, const char *Filename) {
 int fetchDecode(TamEmulator *Emulator, Instruction *Instr) {
     uint16_t Idx = Emulator->Registers[CP]++;
     if (Idx >= Emulator->Registers[CT]) {
-        return 0;
+        return ErrCodeAccessViolation;
     }
 
     uint32_t Code = Emulator->CodeStore[Idx];
     *Instr = (Instruction){(Code & 0xf0000000) >> 28, (Code & 0x0f000000) >> 24,
                            (Code & 0x00ff0000) >> 16, (Code & 0x0000ffff)};
-    return 1;
+    return OK;
 }
 
 static int pushData(TamEmulator *Emulator, DATA_W Datum) {
     if (Emulator->Registers[ST] >= Emulator->Registers[HT]) {
-        return 0;
+        return ErrStackOverflow;
     }
 
     ADDRESS Addr = Emulator->Registers[ST]++;
     Emulator->DataStore[Addr] = Datum;
-    return 1;
+    return OK;
 }
 
 static int popData(TamEmulator *Emulator, DATA_W *Datum) {
     if (!Emulator->Registers[ST]) {
-        return 0;
+        return ErrStackUnderflow;
     }
 
     ADDRESS Addr = --Emulator->Registers[ST];
     *Datum = Emulator->DataStore[Addr];
-    return 1;
+    return OK;
 }
 
 static ADDRESS calcAddress(TamEmulator *Emulator, Instruction Instr) {
@@ -72,12 +72,18 @@ static ADDRESS calcAddress(TamEmulator *Emulator, Instruction Instr) {
 }
 
 static int execLoad(TamEmulator *Emulator, Instruction Instr) {
+    TamError Err;
     ADDRESS BaseAddr = calcAddress(Emulator, Instr);
     for (int i = 0; i < Instr.N; ++i) {
         ADDRESS Addr = BaseAddr + i;
+        if (Addr >= Emulator->Registers[ST] &&
+            Addr <= Emulator->Registers[HT]) {
+            return ErrDataAccessViolation;
+        }
+
         DATA_W Data = Emulator->DataStore[Addr];
-        if (!pushData(Emulator, Data)) {
-            return 0;
+        if ((Err = pushData(Emulator, Data))) {
+            return Err;
         }
     }
     return 1;
@@ -85,22 +91,29 @@ static int execLoad(TamEmulator *Emulator, Instruction Instr) {
 
 static int execLoada(TamEmulator *Emulator, Instruction Instr) {
     ADDRESS Addr = calcAddress(Emulator, Instr);
-    pushData(Emulator, (DATA_W)Addr);
-    return 0;
+    return pushData(Emulator, (DATA_W)Addr);
 }
 
 static int execLoadi(TamEmulator *Emulator, Instruction Instr) {
     ADDRESS BaseAddr;
-    if (!popData(Emulator, (DATA_W *)&BaseAddr)) {
-        return 0;
+    TamError Err;
+    if ((Err = popData(Emulator, (DATA_W *)&BaseAddr))) {
+        return Err;
     }
 
     for (int i = 0; i < Instr.N; ++i) {
         ADDRESS Addr = BaseAddr + i;
+        if (Addr >= Emulator->Registers[ST] &&
+            Addr <= Emulator->Registers[HT]) {
+            return ErrDataAccessViolation;
+        }
+
         DATA_W Data = Emulator->DataStore[Addr];
-        pushData(Emulator, Data);
+        if ((Err = pushData(Emulator, Data))) {
+            return Err;
+        }
     }
-    return 1;
+    return OK;
 }
 
 static int execLoadl(TamEmulator *Emulator, Instruction Instr) {
@@ -108,11 +121,13 @@ static int execLoadl(TamEmulator *Emulator, Instruction Instr) {
 }
 
 static int execStore(TamEmulator *Emulator, Instruction Instr) {
+    TamError Err;
+
     // pop value
     DATA_W Value[Instr.N];
     for (int i = 0; i < Instr.N; ++i) {
-        if (!popData(Emulator, Value + i)) {
-            return 0;
+        if ((Err = popData(Emulator, Value + i))) {
+            return Err;
         }
     }
 
@@ -120,6 +135,11 @@ static int execStore(TamEmulator *Emulator, Instruction Instr) {
     ADDRESS BaseAddr = calcAddress(Emulator, Instr);
     for (int i = 0; i < Instr.N; ++i) {
         ADDRESS Addr = BaseAddr + i;
+        if (Addr >= Emulator->Registers[ST] &&
+            Addr <= Emulator->Registers[HT]) {
+            return ErrDataAccessViolation;
+        }
+
         Emulator->DataStore[Addr] = Value[Instr.N - i - 1];
     }
 
@@ -127,22 +147,29 @@ static int execStore(TamEmulator *Emulator, Instruction Instr) {
 }
 
 static int execStorei(TamEmulator *Emulator, Instruction Instr) {
+    TamError Err;
+
     // pop value
     DATA_W Value[Instr.N];
     for (int i = 0; i < Instr.N; ++i) {
-        if (!popData(Emulator, Value + i)) {
-            return 0;
+        if ((Err = popData(Emulator, Value + i))) {
+            return Err;
         }
     }
 
     // store
     ADDRESS BaseAddr;
-    if (!popData(Emulator, (DATA_W *)&BaseAddr)) {
-        return 0;
+    if ((Err = popData(Emulator, (DATA_W *)&BaseAddr))) {
+        return Err;
     }
 
     for (int i = 0; i < Instr.N; ++i) {
         ADDRESS Addr = BaseAddr + i;
+        if (Addr >= Emulator->Registers[ST] &&
+            Addr <= Emulator->Registers[HT]) {
+            return ErrDataAccessViolation;
+        }
+
         Emulator->DataStore[Addr] = Value[Instr.N - i - 1];
     }
 
@@ -152,21 +179,22 @@ static int execStorei(TamEmulator *Emulator, Instruction Instr) {
 static int execJump(TamEmulator *Emulator, Instruction Instr) {
     ADDRESS Addr = calcAddress(Emulator, Instr);
     if (Addr >= Emulator->Registers[CT]) {
-        return 0;
+        return ErrCodeAccessViolation;
     }
 
     Emulator->Registers[CP] = Addr;
-    return 1;
+    return OK;
 }
 
 static int execJumpi(TamEmulator *Emulator, Instruction Instr) {
+    TamError Err;
     ADDRESS Addr;
-    if (!popData(Emulator, (DATA_W *)&Addr)) {
-        return 0;
+    if ((Err = popData(Emulator, (DATA_W *)&Addr))) {
+        return Err;
     }
 
     if (Addr >= Emulator->Registers[CT]) {
-        return 0;
+        return ErrCodeAccessViolation;
     }
 
     Emulator->Registers[CP] = Addr;
@@ -174,18 +202,19 @@ static int execJumpi(TamEmulator *Emulator, Instruction Instr) {
 }
 
 static int execJumpif(TamEmulator *Emulator, Instruction Instr) {
+    TamError Err;
     DATA_W Arg;
-    if (!popData(Emulator, &Arg)) {
-        return 0;
+    if ((Err = popData(Emulator, &Arg))) {
+        return Err;
     }
 
     if (Arg != Instr.N) {
-        return 1;
+        return OK;
     }
 
     ADDRESS Addr = calcAddress(Emulator, Instr);
     if (Addr >= Emulator->Registers[CT]) {
-        return 0;
+        return ErrCodeAccessViolation;
     }
 
     Emulator->Registers[CP] = Addr;

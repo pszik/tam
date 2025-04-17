@@ -13,20 +13,18 @@ int main(int argc, const char **argv) {
 
     Instruction Instr;
     while (1) {
-        if (!fetchDecode(&Emulator, &Instr)) {
-            fprintf(stderr, "Failed to fetch instruction\n");
-            return 2;
+        if ((ErrCode = fetchDecode(&Emulator, &Instr))) {
+            fprintf(stderr, "failed to fetch instruction (%d)\n", ErrCode);
+            return ErrCode;
         }
 
         if (Instr.Op == HALT) {
             break;
         }
 
-        if (!execute(&Emulator, Instr)) {
-            fprintf(stderr, "Execution error\n");
-            return 3;
+        if ((ErrCode = execute(&Emulator, Instr))) {
+            fprintf(stderr, "execution error (%d)\n", ErrCode);
+            return ErrCode;
         }
     }
-
-    printf("Hello, tam!\n");
 }
