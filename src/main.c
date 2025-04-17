@@ -57,10 +57,20 @@ int main(int argc, const char **argv) {
     int ErrCode;
     TamEmulator *Emulator = newEmulator();
 
-    int TraceMode =
-        !(strncmp("-t", argv[1], 2) && strncmp("--trace", argv[1], 7));
-    const char *Filename = TraceMode ? argv[2] : argv[1];
+    if (argc < 2) {
+        fprintf(stderr, "must specify program file\n");
+        return 1;
+    }
 
+    int TraceMode =
+        strncmp("-t", argv[1], 2) == 0 || strncmp("--trace", argv[1], 7) == 0;
+
+    if (TraceMode && argc < 3) {
+        fprintf(stderr, "must specify program file\n");
+        return 1;
+    }
+
+    const char *Filename = TraceMode ? argv[2] : argv[1];
     if ((ErrCode = loadProgram(Emulator, Filename))) {
         fprintf(stderr, "%s\n", errorMessage(ErrCode));
         return ErrCode;
