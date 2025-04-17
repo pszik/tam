@@ -62,6 +62,16 @@ static int pushData(TamEmulator *Emulator, DATA_W Datum) {
     return OK;
 }
 
+/// Attempt to push data onto the stack.
+/// @param Emulator emulator to use
+/// @param Datum value to push
+#define PUSH(Emulator, Datum)                                                  \
+    {                                                                          \
+        TamError Err;                                                          \
+        if ((Err = pushData(Emulator, Datum)))                                 \
+            return Err;                                                        \
+    }
+
 static int popData(TamEmulator *Emulator, DATA_W *Datum) {
     if (!Emulator->Registers[ST]) {
         return ErrStackUnderflow;
@@ -75,6 +85,16 @@ static int popData(TamEmulator *Emulator, DATA_W *Datum) {
     *Datum = Emulator->DataStore[Addr];
     return OK;
 }
+
+/// Attempt to pop a value from the stack.
+/// @param Emulator emulator to use
+/// @param Datum address of variable to store popped value
+#define POP(Emulator, Datum)                                                   \
+    {                                                                          \
+        TamError Err;                                                          \
+        if ((Err = popData(Emulator, Datum)))                                  \
+            return Err;                                                        \
+    }
 
 static ADDRESS calcAddress(TamEmulator *Emulator, Instruction Instr) {
     return Emulator->Registers[Instr.R] + Instr.D;
@@ -91,9 +111,7 @@ static int execLoad(TamEmulator *Emulator, Instruction Instr) {
         }
 
         DATA_W Data = Emulator->DataStore[Addr];
-        if ((Err = pushData(Emulator, Data))) {
-            return Err;
-        }
+        PUSH(Emulator, Data);
     }
     return 1;
 }
@@ -105,10 +123,7 @@ static int execLoada(TamEmulator *Emulator, Instruction Instr) {
 
 static int execLoadi(TamEmulator *Emulator, Instruction Instr) {
     ADDRESS BaseAddr;
-    TamError Err;
-    if ((Err = popData(Emulator, (DATA_W *)&BaseAddr))) {
-        return Err;
-    }
+    POP(Emulator, (DATA_W *)&BaseAddr);
 
     for (int i = 0; i < Instr.N; ++i) {
         ADDRESS Addr = BaseAddr + i;
@@ -118,9 +133,7 @@ static int execLoadi(TamEmulator *Emulator, Instruction Instr) {
         }
 
         DATA_W Data = Emulator->DataStore[Addr];
-        if ((Err = pushData(Emulator, Data))) {
-            return Err;
-        }
+        PUSH(Emulator, Data);
     }
     return OK;
 }
@@ -130,14 +143,10 @@ static int execLoadl(TamEmulator *Emulator, Instruction Instr) {
 }
 
 static int execStore(TamEmulator *Emulator, Instruction Instr) {
-    TamError Err;
-
     // pop value
     DATA_W Value[Instr.N];
     for (int i = 0; i < Instr.N; ++i) {
-        if ((Err = popData(Emulator, Value + i))) {
-            return Err;
-        }
+        POP(Emulator, Value + i)
     }
 
     // store
@@ -152,25 +161,19 @@ static int execStore(TamEmulator *Emulator, Instruction Instr) {
         Emulator->DataStore[Addr] = Value[Instr.N - i - 1];
     }
 
-    return 1;
+    return OK;
 }
 
 static int execStorei(TamEmulator *Emulator, Instruction Instr) {
-    TamError Err;
-
     // pop value
     DATA_W Value[Instr.N];
     for (int i = 0; i < Instr.N; ++i) {
-        if ((Err = popData(Emulator, Value + i))) {
-            return Err;
-        }
+        POP(Emulator, Value + i);
     }
 
     // store
     ADDRESS BaseAddr;
-    if ((Err = popData(Emulator, (DATA_W *)&BaseAddr))) {
-        return Err;
-    }
+    POP(Emulator, (DATA_W *)&BaseAddr);
 
     for (int i = 0; i < Instr.N; ++i) {
         ADDRESS Addr = BaseAddr + i;
@@ -182,7 +185,7 @@ static int execStorei(TamEmulator *Emulator, Instruction Instr) {
         Emulator->DataStore[Addr] = Value[Instr.N - i - 1];
     }
 
-    return 1;
+    return OK;
 }
 
 static int execCall(TamEmulator *Emulator, Instruction Instr) {
@@ -195,16 +198,9 @@ static int execCall(TamEmulator *Emulator, Instruction Instr) {
         return ErrCodeAccessViolation;
     }
 
-    TamError Err;
-    if ((Err = pushData(Emulator, (DATA_W)StaticLink))) {
-        return Err;
-    }
-    if ((Err = pushData(Emulator, (DATA_W)DynamicLink))) {
-        return Err;
-    }
-    if ((Err = pushData(Emulator, (DATA_W)ReturnAddress))) {
-        return Err;
-    }
+    PUSH(Emulator, (DATA_W)StaticLink);
+    PUSH(Emulator, (DATA_W)DynamicLink);
+    PUSH(Emulator, (DATA_W)ReturnAddress);
 
     Emulator->Registers[LB] = Emulator->Registers[ST] - 3;
     Emulator->Registers[CP] = CallAddr;
@@ -219,26 +215,18 @@ static int execCallPrimitive(TamEmulator *Emulator, Instruction Instr) {
     case 1: // id
         break;
     case 2: // not
-        if ((Err = popData(Emulator, &Arg1))) {
-            return Err;
-        }
-        if ((Err = pushData(Emulator, Arg1 ? 0 : 1))) {
-            return Err;
-        }
+        POP(Emulator, &Arg1);
+        PUSH(Emulator, Arg1 ? 0 : 1);
         break;
     }
     return OK;
 }
 
 static int execReturn(TamEmulator *Emulator, Instruction Instr) {
-    TamError Err;
-
     // pop result
     DATA_W Result[Instr.N];
     for (int i = 0; i < Instr.N; ++i) {
-        if ((Err = popData(Emulator, Result + i))) {
-            return Err;
-        }
+        POP(Emulator, Result + i);
     }
 
     // pop frame and arguments
@@ -249,16 +237,12 @@ static int execReturn(TamEmulator *Emulator, Instruction Instr) {
 
     Emulator->Registers[ST] = Emulator->Registers[LB];
     for (int i = 0; i < Instr.D; ++i) {
-        if ((Err = popData(Emulator, NULL))) {
-            return Err;
-        }
+        POP(Emulator, NULL);
     }
 
     // push result and update registers
     for (int i = Instr.N - 1; i >= 0; --i) {
-        if ((Err = pushData(Emulator, Result[i]))) {
-            return Err;
-        }
+        PUSH(Emulator, Result[i]);
     }
     Emulator->Registers[LB] = DynamicLink;
     Emulator->Registers[CP] = ReturnAddr;
@@ -280,23 +264,17 @@ static int execPop(TamEmulator *Emulator, Instruction Instr) {
     // pop value
     DATA_W Value[Instr.N];
     for (int i = 0; i < Instr.N; ++i) {
-        if ((Err = popData(Emulator, Value + i))) {
-            return Err;
-        }
+        POP(Emulator, Value + i);
     }
 
     // pop spares
     for (int i = 0; i < Instr.D; ++i) {
-        if ((Err = popData(Emulator, NULL))) {
-            return Err;
-        }
+        POP(Emulator, NULL);
     }
 
     // push value
     for (int i = Instr.N - 1; i >= 0; --i) {
-        if ((Err = pushData(Emulator, Value[i]))) {
-            return Err;
-        }
+        PUSH(Emulator, Value[i]);
     }
 
     return OK;
@@ -313,11 +291,8 @@ static int execJump(TamEmulator *Emulator, Instruction Instr) {
 }
 
 static int execJumpi(TamEmulator *Emulator, Instruction Instr) {
-    TamError Err;
     ADDRESS Addr;
-    if ((Err = popData(Emulator, (DATA_W *)&Addr))) {
-        return Err;
-    }
+    POP(Emulator, (DATA_W *)&Addr);
 
     if (Addr >= Emulator->Registers[CT]) {
         return ErrCodeAccessViolation;
@@ -328,11 +303,8 @@ static int execJumpi(TamEmulator *Emulator, Instruction Instr) {
 }
 
 static int execJumpif(TamEmulator *Emulator, Instruction Instr) {
-    TamError Err;
     DATA_W Arg;
-    if ((Err = popData(Emulator, &Arg))) {
-        return Err;
-    }
+    POP(Emulator, &Arg);
 
     if (Arg != Instr.N) {
         return OK;
