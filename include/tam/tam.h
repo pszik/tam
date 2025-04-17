@@ -2,6 +2,7 @@
 #define TAM_TAM_H__
 
 #include <stdint.h>
+#include <stdlib.h>
 
 /// Maximum number of addressable words.
 #define MEMORY_SIZE 65536
@@ -19,6 +20,12 @@ typedef struct TamEmulator {
     DATA_W DataStore[MEMORY_SIZE]; ///< Contains the stack and global variables
     ADDRESS Registers[16];         ///< Contains register values
 } TamEmulator;
+
+/// Allocate a new emulator with all memory zeroed.
+/// @return pointer to the emulator
+static TamEmulator *newEmulator() {
+    return (TamEmulator *)calloc(1, sizeof(TamEmulator));
+}
 
 typedef enum Opcode {
     LOAD,

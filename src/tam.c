@@ -1,9 +1,14 @@
 #include <tam/tam.h>
 
 #include <stdio.h>
+#include <string.h>
 #include <tam/error.h>
 
 int loadProgram(TamEmulator *Emulator, const char *Filename) {
+    memset(Emulator->CodeStore, 0, MEMORY_SIZE * 4);
+    memset(Emulator->DataStore, 0, MEMORY_SIZE * 2);
+    memset(Emulator->Registers, 0, 16 * 2);
+
     FILE *File = fopen(Filename, "rb");
     if (!File) {
         return ErrFileNotFound;
