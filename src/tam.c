@@ -211,6 +211,7 @@ static int execCallPrimitive(TamEmulator *Emulator, Instruction Instr) {
     TamError Err;
     DATA_W Arg1, Arg2;
     DATA_W *WArg1, *WArg2;
+    char C;
 
     switch (Instr.D) {
     case 1: // id
@@ -323,6 +324,51 @@ static int execCallPrimitive(TamEmulator *Emulator, Instruction Instr) {
         PUSH(Emulator, Arg2);
         free(WArg1);
         free(WArg2);
+        break;
+    case 19: // eol
+        C = getc(stdin);
+        PUSH(Emulator, C == '\n' ? 1 : 0);
+        putc(C, stdin);
+        break;
+    case 20: // eof
+        C = getc(stdin);
+        PUSH(Emulator, C == EOF ? 1 : 0);
+        putc(C, stdin);
+        break;
+    case 21: // get
+        POP(Emulator, &Arg1);
+        if (Arg1 >= Emulator->Registers[ST] &&
+            Arg1 <= Emulator->Registers[HT]) {
+            return ErrDataAccessViolation;
+        }
+
+        C = getc(stdin);
+        Emulator->DataStore[Arg1] = C;
+        break;
+    case 22: // put
+        POP(Emulator, &Arg1);
+        putc(Arg1, stdin);
+        break;
+    case 23: // geteol
+        while ((C = getc(stdin)) != '\n') {
+        }
+        break;
+    case 24: // puteol
+        putc('\n', stdin);
+        break;
+    case 25: // getint
+        POP(Emulator, &Arg1);
+        if (Arg1 >= Emulator->Registers[ST] &&
+            Arg1 <= Emulator->Registers[HT]) {
+            return ErrDataAccessViolation;
+        }
+
+        fscanf(stdin, "%d", (int *)&Arg2);
+        Emulator->DataStore[Arg1] = Arg2;
+        break;
+    case 26: // putint
+        POP(Emulator, &Arg1);
+        fprintf(stdin, "%d", Arg1);
         break;
     }
     return OK;
