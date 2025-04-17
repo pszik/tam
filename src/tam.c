@@ -5,9 +5,9 @@
 #include <tam/error.h>
 
 int loadProgram(TamEmulator *Emulator, const char *Filename) {
-    memset(Emulator->CodeStore, 0, MEMORY_SIZE * 4);
-    memset(Emulator->DataStore, 0, MEMORY_SIZE * 2);
-    memset(Emulator->Registers, 0, 16 * 2);
+    memset(Emulator->CodeStore, 0, MEMORY_SIZE * sizeof(CODE_W));
+    memset(Emulator->DataStore, 0, MEMORY_SIZE * sizeof(DATA_W));
+    memset(Emulator->Registers, 0, 16 * sizeof(ADDRESS));
 
     FILE *File = fopen(Filename, "rb");
     if (!File) {
@@ -65,6 +65,10 @@ static int pushData(TamEmulator *Emulator, DATA_W Datum) {
 static int popData(TamEmulator *Emulator, DATA_W *Datum) {
     if (!Emulator->Registers[ST]) {
         return ErrStackUnderflow;
+    }
+
+    if (Datum == NULL) {
+        return OK;
     }
 
     ADDRESS Addr = --Emulator->Registers[ST];
@@ -181,6 +185,43 @@ static int execStorei(TamEmulator *Emulator, Instruction Instr) {
     return 1;
 }
 
+static int execPush(TamEmulator *Emulator, Instruction Instr) {
+    if (Emulator->Registers[ST] + Instr.D >= Emulator->Registers[HT]) {
+        return ErrStackOverflow;
+    }
+
+    Emulator->Registers[ST] += Instr.D;
+    return OK;
+}
+
+static int execPop(TamEmulator *Emulator, Instruction Instr) {
+    TamError Err;
+
+    // pop value
+    DATA_W Value[Instr.N];
+    for (int i = 0; i < Instr.N; ++i) {
+        if ((Err = popData(Emulator, Value + i))) {
+            return Err;
+        }
+    }
+
+    // pop spares
+    for (int i = 0; i < Instr.D; ++i) {
+        if ((Err = popData(Emulator, NULL))) {
+            return Err;
+        }
+    }
+
+    // push value
+    for (int i = Instr.N - 1; i >= 0; --i) {
+        if ((Err = pushData(Emulator, Value[i]))) {
+            return Err;
+        }
+    }
+
+    return OK;
+}
+
 static int execJump(TamEmulator *Emulator, Instruction Instr) {
     ADDRESS Addr = calcAddress(Emulator, Instr);
     if (Addr >= Emulator->Registers[CT]) {
@@ -240,6 +281,10 @@ int execute(TamEmulator *Emulator, Instruction Instr) {
         return execStore(Emulator, Instr);
     case STOREI:
         return execStorei(Emulator, Instr);
+    case PUSH:
+        return execPush(Emulator, Instr);
+    case POP:
+        return execPop(Emulator, Instr);
     case JUMP:
         return execJump(Emulator, Instr);
     case JUMPI:
