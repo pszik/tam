@@ -1,10 +1,14 @@
 #include <tam/tam.h>
 
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 #include <tam/error.h>
 
 int loadProgram(TamEmulator *Emulator, const char *Filename) {
+    assert(Emulator);
+    assert(Filename);
+
     memset(Emulator->CodeStore, 0, MEMORY_SIZE * sizeof(CODE_W));
     memset(Emulator->DataStore, 0, MEMORY_SIZE * sizeof(DATA_W));
     memset(Emulator->Registers, 0, 16 * sizeof(ADDRESS));
@@ -37,11 +41,20 @@ int loadProgram(TamEmulator *Emulator, const char *Filename) {
     }
     Emulator->Registers[CT] = FileLength;
 
+    // set registers
+    Emulator->Registers[HB] = MEMORY_SIZE - 1;
+    Emulator->Registers[HT] = MEMORY_SIZE - 1;
+    Emulator->Registers[PB] = Emulator->Registers[CT];
+    Emulator->Registers[PT] = Emulator->Registers[PB] + 29;
+
     return OK;
 }
 
 int fetchDecode(TamEmulator *Emulator, Instruction *Instr) {
-    uint16_t Idx = Emulator->Registers[CP]++;
+    assert(Emulator);
+    assert(Instr);
+
+    uint16_t Idx = Emulator->Registers[CP];
     if (Idx >= Emulator->Registers[CT]) {
         return ErrCodeAccessViolation;
     }
@@ -49,10 +62,12 @@ int fetchDecode(TamEmulator *Emulator, Instruction *Instr) {
     uint32_t Code = Emulator->CodeStore[Idx];
     *Instr = (Instruction){(Code & 0xf0000000) >> 28, (Code & 0x0f000000) >> 24,
                            (Code & 0x00ff0000) >> 16, (Code & 0x0000ffff)};
+    Emulator->Registers[CP]++;
     return OK;
 }
 
 static int pushData(TamEmulator *Emulator, DATA_W Datum) {
+    assert(Emulator);
     if (Emulator->Registers[ST] >= Emulator->Registers[HT]) {
         return ErrStackOverflow;
     }
@@ -76,12 +91,12 @@ static int popData(TamEmulator *Emulator, DATA_W *Datum) {
     if (!Emulator->Registers[ST]) {
         return ErrStackUnderflow;
     }
+    ADDRESS Addr = --Emulator->Registers[ST];
 
     if (Datum == NULL) {
         return OK;
     }
 
-    ADDRESS Addr = --Emulator->Registers[ST];
     *Datum = Emulator->DataStore[Addr];
     return OK;
 }
@@ -113,7 +128,7 @@ static int execLoad(TamEmulator *Emulator, Instruction Instr) {
         DATA_W Data = Emulator->DataStore[Addr];
         PUSH(Emulator, Data);
     }
-    return 1;
+    return OK;
 }
 
 static int execLoada(TamEmulator *Emulator, Instruction Instr) {
@@ -347,14 +362,15 @@ static int execCallPrimitive(TamEmulator *Emulator, Instruction Instr) {
         break;
     case 22: // put
         POP(Emulator, &Arg1);
-        putc(Arg1, stdin);
+        putc(Arg1, stdout);
         break;
     case 23: // geteol
         while ((C = getc(stdin)) != '\n') {
+            // pass
         }
         break;
     case 24: // puteol
-        putc('\n', stdin);
+        putc('\n', stdout);
         break;
     case 25: // getint
         POP(Emulator, &Arg1);
@@ -364,11 +380,11 @@ static int execCallPrimitive(TamEmulator *Emulator, Instruction Instr) {
         }
 
         fscanf(stdin, "%d", (int *)&Arg2);
-        Emulator->DataStore[Arg1] = Arg2;
+        Emulator->DataStore[Arg1] = Arg2 & 0xffff;
         break;
     case 26: // putint
         POP(Emulator, &Arg1);
-        fprintf(stdin, "%d", Arg1);
+        fprintf(stdout, "%d", Arg1);
         break;
     }
     return OK;
@@ -451,7 +467,7 @@ static int execJumpi(TamEmulator *Emulator, Instruction Instr) {
     }
 
     Emulator->Registers[CP] = Addr;
-    return 0;
+    return OK;
 }
 
 static int execJumpif(TamEmulator *Emulator, Instruction Instr) {
@@ -468,7 +484,7 @@ static int execJumpif(TamEmulator *Emulator, Instruction Instr) {
     }
 
     Emulator->Registers[CP] = Addr;
-    return 1;
+    return OK;
 }
 
 int execute(TamEmulator *Emulator, Instruction Instr) {
@@ -509,5 +525,5 @@ int execute(TamEmulator *Emulator, Instruction Instr) {
         return 0;
     }
 
-    return 1;
+    return OK;
 }
