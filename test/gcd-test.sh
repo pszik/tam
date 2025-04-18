@@ -6,7 +6,7 @@ echo "Building..."
 
 # run
 echo "Running..."
-INPUT="38\n18\n"
+INPUT="54\n24\n"
 OUTPUT=$(../build/src/tam gcd.tam <<<"$INPUT")
 
 # check
