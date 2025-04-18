@@ -89,6 +89,7 @@ static int pushData(TamEmulator *Emulator, DATA_W Datum) {
     }
 
 static int popData(TamEmulator *Emulator, DATA_W *Datum) {
+    assert(Emulator);
     if (!Emulator->Registers[ST]) {
         return ErrStackUnderflow;
     }
@@ -111,11 +112,12 @@ static int popData(TamEmulator *Emulator, DATA_W *Datum) {
     }
 
 static ADDRESS calcAddress(TamEmulator *Emulator, Instruction Instr) {
+    assert(Emulator);
     return Emulator->Registers[Instr.R] + Instr.D;
 }
 
 static int execLoad(TamEmulator *Emulator, Instruction Instr) {
-    TamError Err;
+    assert(Emulator);
     ADDRESS BaseAddr = calcAddress(Emulator, Instr);
     for (int i = 0; i < Instr.N; ++i) {
         ADDRESS Addr = BaseAddr + i;
@@ -131,11 +133,13 @@ static int execLoad(TamEmulator *Emulator, Instruction Instr) {
 }
 
 static int execLoada(TamEmulator *Emulator, Instruction Instr) {
+    assert(Emulator);
     ADDRESS Addr = calcAddress(Emulator, Instr);
     return pushData(Emulator, (DATA_W)Addr);
 }
 
 static int execLoadi(TamEmulator *Emulator, Instruction Instr) {
+    assert(Emulator);
     ADDRESS BaseAddr;
     POP(Emulator, (DATA_W *)&BaseAddr);
 
@@ -153,10 +157,13 @@ static int execLoadi(TamEmulator *Emulator, Instruction Instr) {
 }
 
 static int execLoadl(TamEmulator *Emulator, Instruction Instr) {
+    assert(Emulator);
     return pushData(Emulator, Instr.D);
 }
 
 static int execStore(TamEmulator *Emulator, Instruction Instr) {
+    assert(Emulator);
+
     // pop value
     DATA_W Value[Instr.N];
     for (int i = 0; i < Instr.N; ++i) {
@@ -179,6 +186,8 @@ static int execStore(TamEmulator *Emulator, Instruction Instr) {
 }
 
 static int execStorei(TamEmulator *Emulator, Instruction Instr) {
+    assert(Emulator);
+
     // pop value
     DATA_W Value[Instr.N];
     for (int i = 0; i < Instr.N; ++i) {
@@ -203,6 +212,8 @@ static int execStorei(TamEmulator *Emulator, Instruction Instr) {
 }
 
 static int execCall(TamEmulator *Emulator, Instruction Instr) {
+    assert(Emulator);
+
     ADDRESS StaticLink = Emulator->Registers[Instr.N];
     ADDRESS DynamicLink = Emulator->Registers[LB];
     ADDRESS ReturnAddress = Emulator->Registers[CP];
@@ -222,7 +233,8 @@ static int execCall(TamEmulator *Emulator, Instruction Instr) {
 }
 
 static int execCallPrimitive(TamEmulator *Emulator, Instruction Instr) {
-    TamError Err;
+    assert(Emulator);
+
     DATA_W Arg1, Arg2;
     DATA_W *WArg1, *WArg2;
     char C;
@@ -390,6 +402,8 @@ static int execCallPrimitive(TamEmulator *Emulator, Instruction Instr) {
 }
 
 static int execReturn(TamEmulator *Emulator, Instruction Instr) {
+    assert(Emulator);
+
     // pop result
     DATA_W Result[Instr.N];
     for (int i = 0; i < Instr.N; ++i) {
@@ -417,6 +431,7 @@ static int execReturn(TamEmulator *Emulator, Instruction Instr) {
 }
 
 static int execPush(TamEmulator *Emulator, Instruction Instr) {
+    assert(Emulator);
     if (Emulator->Registers[ST] + Instr.D >= Emulator->Registers[HT]) {
         return ErrStackOverflow;
     }
@@ -426,8 +441,7 @@ static int execPush(TamEmulator *Emulator, Instruction Instr) {
 }
 
 static int execPop(TamEmulator *Emulator, Instruction Instr) {
-    TamError Err;
-
+    assert(Emulator);
     // pop value
     DATA_W Value[Instr.N];
     for (int i = 0; i < Instr.N; ++i) {
@@ -448,6 +462,7 @@ static int execPop(TamEmulator *Emulator, Instruction Instr) {
 }
 
 static int execJump(TamEmulator *Emulator, Instruction Instr) {
+    assert(Emulator);
     ADDRESS Addr = calcAddress(Emulator, Instr);
     if (Addr >= Emulator->Registers[CT]) {
         return ErrCodeAccessViolation;
@@ -458,6 +473,7 @@ static int execJump(TamEmulator *Emulator, Instruction Instr) {
 }
 
 static int execJumpi(TamEmulator *Emulator, Instruction Instr) {
+    assert(Emulator);
     ADDRESS Addr;
     POP(Emulator, (DATA_W *)&Addr);
 
@@ -470,6 +486,7 @@ static int execJumpi(TamEmulator *Emulator, Instruction Instr) {
 }
 
 static int execJumpif(TamEmulator *Emulator, Instruction Instr) {
+    assert(Emulator);
     DATA_W Arg;
     POP(Emulator, &Arg);
 
@@ -487,6 +504,7 @@ static int execJumpif(TamEmulator *Emulator, Instruction Instr) {
 }
 
 int execute(TamEmulator *Emulator, Instruction Instr) {
+    assert(Emulator);
     switch (Instr.Op) {
     case LOAD:
         return execLoad(Emulator, Instr);
@@ -520,8 +538,7 @@ int execute(TamEmulator *Emulator, Instruction Instr) {
     case HALT:
         break;
     default:
-        fprintf(stderr, "Unrecognised opcode: %d", Instr.Op);
-        return 0;
+        return ErrUnrecognisedOpcode;
     }
 
     return OK;

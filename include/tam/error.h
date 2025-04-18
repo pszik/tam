@@ -12,6 +12,7 @@ typedef enum TamError {
     ErrDataAccessViolation,
     ErrStackOverflow,
     ErrStackUnderflow,
+    ErrUnrecognisedOpcode,
 } TamError;
 
 static const char *errorMessage(TamError Err) {
@@ -32,6 +33,8 @@ static const char *errorMessage(TamError Err) {
         return "stack overflow";
     case ErrStackUnderflow:
         return "stack underflow";
+    case ErrUnrecognisedOpcode:
+        return "unrecognised opcode";
     }
 }
 
