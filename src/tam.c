@@ -19,27 +19,28 @@ int loadProgram(TamEmulator *Emulator, const char *Filename) {
     }
 
     // get file length
-    int FileLength;
+    int FileLength, ProgSize;
     fseek(File, 0, SEEK_END);
     FileLength = ftell(File);
+    ProgSize = FileLength / 4;
     rewind(File);
 
     if (FileLength % 4 != 0) {
         return ErrFileLength;
     }
 
-    if (FileLength > MEMORY_SIZE) {
+    if (ProgSize > MEMORY_SIZE) {
         return ErrFileLength;
     }
 
     // read bytes
     uint8_t Buf[4];
-    for (int i = 0; i < FileLength; ++i) {
+    for (int i = 0; i < ProgSize; ++i) {
         fread(Buf, 4, 1, File);
         Emulator->CodeStore[i] =
             Buf[0] << 24 | Buf[1] << 16 | Buf[2] << 8 | Buf[3];
     }
-    Emulator->Registers[CT] = FileLength;
+    Emulator->Registers[CT] = ProgSize;
 
     // set registers
     Emulator->Registers[HB] = MEMORY_SIZE - 1;
@@ -93,11 +94,9 @@ static int popData(TamEmulator *Emulator, DATA_W *Datum) {
     }
     ADDRESS Addr = --Emulator->Registers[ST];
 
-    if (Datum == NULL) {
-        return OK;
+    if (Datum) {
+        *Datum = Emulator->DataStore[Addr];
     }
-
-    *Datum = Emulator->DataStore[Addr];
     return OK;
 }
 
@@ -379,12 +378,12 @@ static int execCallPrimitive(TamEmulator *Emulator, Instruction Instr) {
             return ErrDataAccessViolation;
         }
 
-        fscanf(stdin, "%d", (int *)&Arg2);
+        fscanf(stdin, "%hd", &Arg2);
         Emulator->DataStore[Arg1] = Arg2 & 0xffff;
         break;
     case 26: // putint
         POP(Emulator, &Arg1);
-        fprintf(stdout, "%d", Arg1);
+        fprintf(stdout, "%hd", Arg1);
         break;
     }
     return OK;
